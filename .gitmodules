@@ -1,0 +1,3 @@
+[submodule "vdex"]
+	path = vdex
+	url = https://github.com/NighttimeDriver50000/vdex.git

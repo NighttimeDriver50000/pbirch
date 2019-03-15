@@ -1,0 +1,7 @@
+[package]
+name = "pbirch"
+version = "0.1.0"
+authors = ["Chris McKinney <ntd5@tachibanatech.com>"]
+
+[dependencies]
+vdex = { path = "vdex" }

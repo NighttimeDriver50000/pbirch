@@ -22,7 +22,7 @@ pub struct TeamMember {
 }
 
 impl TeamMember {
-    pub fn verify(&self, skip_moves: bool) -> bool {
+    pub fn verify(&self, skip_moveset: bool) -> bool {
         let pokemon_id = self.pokemon.id;
         let genderless = self.gender == pokemon::Gender::Genderless;
         let species_genderless = species_ref(pokemon_id).gender_rate < 0;
@@ -34,10 +34,14 @@ impl TeamMember {
             |item| item.flags.contains(items::Flags::HOLDABLE));
         let evs = self.evs.0.iter().fold(0, |acc, ev| acc + (*ev as u16)) <= 510;
         let ivs = !self.ivs.0.iter().any(|iv| *iv > 31);
-        let has_move = self.moves.iter().any(|mov| mov.is_some());
-        let moves = has_move && (skip_moves || self.moves.iter().all(
-            |opt| opt.map_or(true, |mov| cache_moveset(pokemon_id,
-                |set| set.contains(&mov.id)))));
+        let mut movelist = self.moves.iter().filter_map(
+            |opt| opt.map(|mov| mov.id)).collect::<Vec<_>>();
+        movelist.sort_unstable();
+        let movecount = movelist.len();
+        movelist.dedup();
+        let moves = movecount > 0 && movelist.len() == movecount
+            && (skip_moveset || movelist.iter().all(
+                |mov| cache_moveset(pokemon_id, |set| set.contains(&mov))));
         let pp_ups = self.pp_ups.iter().all(|ups| *ups <= 3);
         let level = self.level > 0 && self.level <= 100;
         gender && ability && held && evs && ivs && moves && pp_ups && level

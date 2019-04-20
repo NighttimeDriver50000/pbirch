@@ -5,4 +5,6 @@ authors = ["Chris McKinney <ntd5@tachibanatech.com>"]
 edition = "2018"
 
 [dependencies]
+bitflags = "1"
+enum-repr = { path = "vdex/enum-repr" }
 vdex = { path = "vdex" }

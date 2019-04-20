@@ -19,8 +19,6 @@ pub struct HookKey {
     pub index: u8,
 }
 
-type PowerFn = Box<dyn Fn(f64, &battle::MoveContext) -> f64>;
-
 pub struct Hooks {
-    pub power: BTreeMap<HookKey, PowerFn>,
+    pub power_modifiers: BTreeMap<HookKey, fn(&battle::MoveContext) -> f64>,
 }

@@ -3,15 +3,15 @@ use crate::hooks;
 use vdex::Enum;
 use enum_repr::EnumRepr;
 
-pub struct SingleBattler<'bat, 'team> {
-    pub bench: Vec<battle::BenchPokemon<'team>>,
-    pub current: Option<battle::BattlePokemon<'bat, 'team>>,
+pub struct SingleBattler<'bat> {
+    pub bench: Vec<battle::BenchPokemon>,
+    pub current: Option<battle::BattlePokemon<'bat>>,
 }
 
-pub struct SingleBattle<'bat, 'team1, 'team2> {
+pub struct SingleBattle<'bat> {
     pub hooks: hooks::Hooks,
-    pub battler1: SingleBattler<'bat, 'team1>,
-    pub battler2: SingleBattler<'bat, 'team2>,
+    pub battler1: SingleBattler<'bat>,
+    pub battler2: SingleBattler<'bat>,
 }
 
 #[EnumRepr(type = "u8")]
@@ -30,19 +30,19 @@ pub enum RelativeTarget {
     Ally,
 }
 
-pub struct LoneDoubleBattler<'bat, 'team> {
-    pub bench: Vec<battle::BenchPokemon<'team>>,
-    pub current1: Option<battle::BattlePokemon<'bat, 'team>>,
-    pub current2: Option<battle::BattlePokemon<'bat, 'team>>,
+pub struct LoneDoubleBattler<'bat> {
+    pub bench: Vec<battle::BenchPokemon>,
+    pub current1: Option<battle::BattlePokemon<'bat>>,
+    pub current2: Option<battle::BattlePokemon<'bat>>,
 }
 
-pub enum DoubleBattler<'bat, 'team1, 'team2> {
-    Lone(LoneDoubleBattler<'bat, 'team1>),
-    Pair(SingleBattler<'bat, 'team1>, SingleBattler<'bat, 'team2>)
+pub enum DoubleBattler<'bat> {
+    Lone(LoneDoubleBattler<'bat>),
+    Pair(SingleBattler<'bat>, SingleBattler<'bat>)
 }
 
-pub struct DoubleBattle<'bat, 'team1, 'team2, 'team3, 'team4> {
+pub struct DoubleBattle<'bat> {
     pub hooks: hooks::Hooks,
-    pub battler1: DoubleBattler<'bat, 'team1, 'team2>,
-    pub battler2: DoubleBattler<'bat, 'team3, 'team4>,
+    pub battler1: DoubleBattler<'bat>,
+    pub battler2: DoubleBattler<'bat>,
 }

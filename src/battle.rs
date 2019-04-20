@@ -3,29 +3,31 @@ use crate::hooks;
 use crate::team;
 use vdex::moves;
 
-pub struct BenchPokemon<'team> {
-    pub base: &'team team::TeamMember,
+pub struct BenchPokemon {
+    pub base: team::TeamMember,
     pub status: ailments::BenchAilments,
     pub hp: u16,
 }
 
-pub struct BattlePokemon<'bat, 'team> {
+pub struct BattlePokemon<'bat> {
     pub index: usize,
-    pub perm: &'bat mut BenchPokemon<'team>,
+    pub perm: &'bat mut BenchPokemon,
     pub overlay: team::TeamMember,
     pub status: ailments::BattlerAilments,
     pub stat_changes: [i8; moves::CHANGEABLE_STATS],
 }
 
-pub struct MoveContext<'bat, 'team> {
+pub struct MoveContext<'bat> {
     pub mov: &'static moves::Move,
-    pub user: &'bat BattlePokemon<'bat, 'team>,
+    pub user: &'bat BattlePokemon<'bat>,
     pub hooks: &'bat hooks::Hooks,
-    pub bench: &'bat Vec<BenchPokemon<'team>>,
+    pub bench: &'bat Vec<BenchPokemon>,
 }
 
-impl<'bat, 'team> BattlePokemon<'bat, 'team> {
+impl<'bat> BattlePokemon<'bat> {
     pub fn calc_damage(&self, context: &MoveContext) -> u16 {
+        let power = context.hooks.power_modifiers.values().fold(
+            context.mov.power as f64, |pow, func| pow * func(context));
         0
     }
 

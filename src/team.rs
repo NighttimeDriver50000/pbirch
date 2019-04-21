@@ -47,20 +47,28 @@ impl TeamMember {
             && self.verify_moves(skip_moveset)
     }
 
-    pub fn stat(&self, stat: Stat) -> u16 {
+    fn stat_core(&self, stat: Stat) -> u16 {
         let base = self.pokemon.stats[stat] as u16;
         let iv = self.ivs[stat] as u16;
         let ev = self.evs[stat] as u16;
         let level = self.level as u16;
-        let core = (((2 * base) + iv + (ev / 4)) * level) / 100;
-        if stat == Stat::HP {
-            core + level + 10
-        } else if self.nature.increased().map_or(false, |s| s == stat) {
-            ((core + 5) * 11) / 10
-        } else if self.nature.decreased().map_or(false, |s| s == stat) {
-            ((core + 5) * 9) / 10
-        } else {
-            core + 5
+        (((2 * base) + iv + (ev / 4)) * level) / 100
+    }
+
+    pub fn stat(&self, stat: Stat) -> u16 {
+        match stat {
+            Stat::HP => self.stat_core(stat) + (self.level as u16) + 10,
+            Stat::Accuracy | Stat::Evasion => 1,
+            _ => {
+                let core = self.stat_core(stat);
+                if self.nature.increased().map_or(false, |s| s == stat) {
+                    ((core + 5) * 11) / 10
+                } else if self.nature.decreased().map_or(false, |s| s == stat) {
+                    ((core + 5) * 9) / 10
+                } else {
+                    core + 5
+                }
+            },
         }
     }
 }

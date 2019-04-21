@@ -1,17 +1,14 @@
-bitflags! {
-    pub struct BenchAilmentFlags: u8 {
-        const PARALYZED = 0x01;
-        const ASLEEP = 0x02;
-        const FROZEN = 0x04;
-        const BURNED = 0x08;
-        const POISONED = 0x10;
-        const BADLY_POISONED = 0x30;
-    }
-}
-
-pub struct BenchAilments {
-    pub flags: BenchAilmentFlags,
-    pub remaining_sleep_turns: u8,
+#[derive(Copy, Clone, Debug)]
+pub enum BenchAilment {
+    Paralyzed,
+    Asleep {
+        remaining_turns: u8,
+    },
+    Frozen,
+    Burned,
+    Poisoned {
+        bad: bool,
+    },
 }
 
 bitflags! {
@@ -55,6 +52,7 @@ bitflags! {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct BattlerAilments {
     pub flags: BattlerAilmentFlags,
     pub turns_badly_poisoned: u8,

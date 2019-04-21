@@ -5,6 +5,7 @@ use vdex::items;
 use vdex::moves;
 use vdex::pokemon;
 
+#[derive(Copy, Clone, Debug)]
 pub struct TeamMember {
     pub pokemon: &'static pokemon::Pokemon,
     pub gender: pokemon::Gender,

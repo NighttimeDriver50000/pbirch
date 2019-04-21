@@ -108,29 +108,29 @@ impl DamageContext {
 
         let level_factor = ((2 * user.overlay.level) / 5) + 2;
         let power = user.hooks.power_modifiers.values().fold(
-            self.mov.power as f64, |pow, func| pow * func(self)).trunc();
+            self.mov.power as f64, |pow, func| pow * func.0(self)).trunc();
 
         let attack_stat = user.stat(match self.cls {
             moves::DamageClass::Special => Stat::SpecialAttack,
             _ => Stat::Attack,
         }, self.critical);
         let attack = user.hooks.attack_modifiers.values().fold(
-            attack_stat as f64, |atk, func| atk * func(self)).trunc();
+            attack_stat as f64, |atk, func| atk * func.0(self)).trunc();
 
         let defense_stat = target.stat(match self.cls {
             moves::DamageClass::Special => Stat::SpecialDefense,
             _ => Stat::Defense,
         }, self.critical);
         let defense = target.hooks.defense_modifiers.values().fold(
-            defense_stat as f64, |def, func| def * func(self)).trunc();
+            defense_stat as f64, |def, func| def * func.0(self)).trunc();
 
         let base_modi = if self.critical { 2.0 } else { 1.0 }
             * if self.target_count > 1 { 0.75 } else { 1.0 }
             * user.stab(self.typ) * target.efficacy(self.typ);
         let user_modi = user.hooks.user_damage_modifiers.values().fold(
-            base_modi, |modi, func| modi * func(self));
+            base_modi, |modi, func| modi * func.0(self));
         let target_modi = target.hooks.target_damage_modifiers.values().fold(
-            user_modi, |modi, func| modi * func(self));
+            user_modi, |modi, func| modi * func.0(self));
 
         let max = (((((((level_factor as f64) * power) * attack)
             / defense).trunc() / 50.0).trunc() + 2.0) * target_modi).trunc();

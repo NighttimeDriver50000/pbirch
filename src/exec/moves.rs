@@ -1,6 +1,7 @@
 use crate::battle::{Current, DamageContext};
 use crate::formats::{AbsoluteTarget, RelativeTarget};
 use vdex::moves::{self, Move, Effect};
+use vdex::Stat;
 
 pub fn get_targets(user: &Current, mov: &'static Move) -> Vec<RelativeTarget> {
     match mov.target {
@@ -58,8 +59,13 @@ pub fn execute_move<F, R>(
             _ => r < 24,
         }
     };
+    let percent_event = |rng: &mut R, percent: u8| {
+        percent > 0 && rng.gen_range(0, 100) < percent
+    };
     match mov.effect {
         Effect::RegularDamage => {
+            // Moves that hit once and do damage, potentially applying an
+            // ailment, flinching, or stat changes to the target.
             for target in targets {
                 let context = DamageContext {
                     user: user.clone(),
@@ -72,9 +78,23 @@ pub fn execute_move<F, R>(
                     class: mov.damage_class,
                     critical: gen_critical(rng),
                 };
-                if rng.gen_range(0.0, 1.0) < context.accuracy() {
+                let acc = context.accuracy();
+                if acc >= 1.0 || rng.gen_range(0.0, 1.0) < acc {
                     let dmg = context.damage(rng);
                     if dmg > 0 {
+                        let meta = &mov.meta;
+                        user.borrow_mut().direct_percentage(dmg, meta.recoil);
+                        let max_hp = user.borrow().overlay.stat(Stat::HP);
+                        user.borrow_mut().direct_percentage(max_hp, meta.healing);
+                        if percent_event(rng, meta.ailment_chance) {
+                            // TODO: apply ailments
+                        }
+                        if percent_event(rng, meta.flinch_chance) {
+                            // TODO: flinching
+                        }
+                        if percent_event(rng, meta.stat_chance) {
+                            user.borrow_mut().change_stats(meta.stat_changes);
+                        }
                     }
                 }
             }

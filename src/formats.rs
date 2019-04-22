@@ -6,6 +6,34 @@ use std::rc::Rc;
 use vdex::Enum;
 use enum_repr::EnumRepr;
 
+#[EnumRepr(type = "u8")]
+pub enum AbsoluteTarget {
+    Battler1_1 = 0,
+    Battler1_2,
+    Battler2_1,
+    Battler2_2,
+}
+
+impl AbsoluteTarget {
+    pub fn relative(self, user: &AbsoluteTarget) -> RelativeTarget {
+        RelativeTarget::from_repr(self.repr() ^ user.repr()).unwrap()
+    }
+}
+
+#[EnumRepr(type = "u8")]
+pub enum RelativeTarget {
+    User = 0,
+    Ally,
+    OpponentForward,
+    OpponentAcross,
+}
+
+impl RelativeTarget {
+    pub fn absolute(self, user: &AbsoluteTarget) -> AbsoluteTarget {
+        AbsoluteTarget::from_repr(self.repr() ^ user.repr()).unwrap()
+    }
+}
+
 pub struct SingleBattler {
     pub bench: battle::Bench,
     pub current: battle::Current,
@@ -39,33 +67,21 @@ impl SingleBattle {
             AbsoluteTarget::Battler2_1, team2, &hooks);
         Self { hooks, battler1, battler2 }
     }
-}
 
-#[EnumRepr(type = "u8")]
-pub enum AbsoluteTarget {
-    Battler1_1 = 0,
-    Battler1_2,
-    Battler2_1,
-    Battler2_2,
-}
-
-impl AbsoluteTarget {
-    pub fn relative(self, user: &AbsoluteTarget) -> RelativeTarget {
-        RelativeTarget::from_repr(self.repr() ^ user.repr()).unwrap()
-    }
-}
-
-#[EnumRepr(type = "u8")]
-pub enum RelativeTarget {
-    User = 0,
-    Ally,
-    OpponentForward,
-    OpponentAcross,
-}
-
-impl RelativeTarget {
-    pub fn absolute(self, user: &AbsoluteTarget) -> AbsoluteTarget {
-        AbsoluteTarget::from_repr(self.repr() ^ user.repr()).unwrap()
+    pub fn resolve_targets(
+        &self, targets: &Vec<AbsoluteTarget>
+    ) -> Vec<battle::Current> {
+        let mut currents = Vec::new();
+        for target in targets {
+            match target {
+                AbsoluteTarget::Battler1_1
+                    => currents.push(self.battler1.current.clone()),
+                AbsoluteTarget::Battler2_1
+                    => currents.push(self.battler2.current.clone()),
+                _ => (),
+            }
+        }
+        currents
     }
 }
 

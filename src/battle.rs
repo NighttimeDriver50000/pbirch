@@ -63,9 +63,36 @@ impl BattlePokemon {
         }
     }
 
-    pub fn direct_damage(&mut self, dmg: u16) {
+    pub fn direct_damage(&mut self, amt: u16) -> u16 {
         let mut perm = self.perm.borrow_mut();
-        perm.hp = perm.hp.checked_sub(dmg).unwrap_or(0);
+        let capped = amt.min(perm.hp);
+        perm.hp -= capped;
+        capped
+    }
+
+    pub fn direct_heal(&mut self, amt: u16) -> u16 {
+        let mut perm = self.perm.borrow_mut();
+        let capped = amt.min(self.overlay.stat(Stat::HP) - perm.hp);
+        perm.hp += capped;
+        capped
+    }
+
+    pub fn direct_percentage(&mut self, base: u16, percent: i8) -> u16 {
+        let amt = (base.checked_mul(percent.abs() as u16)
+            .unwrap_or(std::u16::MAX) / 100).max(1);
+        if percent > 0 {
+            self.direct_heal(amt)
+        } else {
+            self.direct_damage(amt)
+        }
+    }
+
+    pub fn change_stats(&mut self, changes: [i8; moves::CHANGEABLE_STATS]) {
+        for i in 0..moves::CHANGEABLE_STATS {
+            let change = changes[i].max(-12).min(12);
+            let stat = &mut self.stat_changes[i];
+            *stat = (*stat + change).max(-6).min(6);
+        }
     }
 
     pub fn efficacy(&self, typ: Type) -> f64 {
@@ -216,11 +243,11 @@ impl DamageContext {
 
     pub fn damage<R: rand::Rng>(&self, rng: &mut R) -> u16 {
         let max = self.calc_max_damage();
-        eprintln!("Debug: Max damage: {}", max);
         let dmg = ((max * rng.gen_range(85, 101)) / 100).max(1).min(max);
         if dmg > 0 {
-            self.target.borrow_mut().direct_damage(dmg);
+            self.target.borrow_mut().direct_damage(dmg)
+        } else {
+            0
         }
-        dmg
     }
 }

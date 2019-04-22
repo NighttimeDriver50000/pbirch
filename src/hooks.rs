@@ -2,12 +2,10 @@ use crate::battle;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt;
-use std::ops::Try;
 use std::rc::Rc;
 use vdex::Ability;
 use vdex::moves::MoveId;
 use vdex::items::ItemId;
-use veekun::repr::NeverError;
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum HookSource {
@@ -63,11 +61,12 @@ impl<T: Clone> HookMap<T> {
         }
     }
 
-    pub fn try_fold<A, F, R>(
-        &self, init: A, func: F
-    ) -> R where F: FnMut(A, T) -> R, R: Try<Ok=A> {
+    pub fn fold<A, F>(
+        &self, init: A, mut func: F
+    ) -> A where F: FnMut(A, &T) -> A {
         let mut acc = init;
-        let mut b_iter = self.battle.borrow().iter();
+        let battle_borrow = self.battle.borrow();
+        let mut b_iter = battle_borrow.iter();
         let mut b_next = b_iter.next();
         let mut o_iter = self.overlay.iter();
         let mut o_next = o_iter.next();
@@ -80,23 +79,18 @@ impl<T: Clone> HookMap<T> {
                     if o.0 <= b.0 {
                         o_next = o_iter.next();
                     }
-                    acc = func(acc, if b.0 < o.0 { b.1 } else { o.1 })?;
+                    acc = func(acc, if b.0 < o.0 { b.1 } else { o.1 });
                 } else {
                     b_next = b_iter.next();
-                    acc = func(acc, b.1)?;
+                    acc = func(acc, b.1);
                 }
             } else if let Some(o) = o_next {
                 o_next = o_iter.next();
-                acc = func(acc, o.1)?;
+                acc = func(acc, o.1);
             } else {
                 return acc;
             }
         }
-    }
-
-    pub fn fold<A, F>(&self, init: A, func: F) -> A where F: FnMut(A, T) -> A {
-        self.try_fold(init,
-            move |acc, x| Ok::<A, NeverError>(func(acc, x))).unwrap()
     }
 }
 

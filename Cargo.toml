@@ -9,4 +9,3 @@ bitflags = "1"
 enum-repr = { path = "vdex/enum-repr" }
 rand = "0.6"
 vdex = { path = "vdex" }
-veekun = { path = "vdex/veekun" }

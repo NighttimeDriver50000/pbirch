@@ -1,18 +1,14 @@
 use crate::battle;
 use crate::hooks::Hooks;
-use crate::team::TeamMember;
+use crate::team::Team;
 use std::cell::RefCell;
 use std::rc::Rc;
 use vdex::Enum;
 use enum_repr::EnumRepr;
 
-type Team = Vec<Rc<TeamMember>>;
-type Bench = Vec<Rc<RefCell<battle::BenchPokemon>>>;
-type Current = Rc<RefCell<battle::BattlePokemon>>;
-
 pub struct SingleBattler {
-    pub bench: Bench,
-    pub current: Current,
+    pub bench: battle::Bench,
+    pub current: battle::Current,
 }
 
 impl SingleBattler {
@@ -60,9 +56,9 @@ pub enum RelativeTarget {
 }
 
 pub struct LoneDoubleBattler {
-    pub bench: Bench,
-    pub current1: Current,
-    pub current2: Current,
+    pub bench: battle::Bench,
+    pub current1: battle::Current,
+    pub current2: battle::Current,
 }
 
 pub enum DoubleBattler {

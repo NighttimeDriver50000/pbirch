@@ -1,9 +1,12 @@
 use crate::caches::movesets::cache_moveset;
 use crate::caches::pokemon::species_ref;
+use std::rc::Rc;
 use vdex::{Ability, Nature, Stat};
 use vdex::items;
 use vdex::moves;
 use vdex::pokemon;
+
+pub type Team = Vec<Rc<TeamMember>>;
 
 #[derive(Copy, Clone, Debug)]
 pub struct TeamMember {

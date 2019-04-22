@@ -9,6 +9,10 @@ use vdex::pokemon::OneOrTwo;
 use vdex::Stat;
 use vdex::Type;
 
+pub type Benched = Rc<RefCell<BenchPokemon>>;
+pub type Bench = Vec<Benched>;
+pub type Current = Rc<RefCell<BattlePokemon>>;
+
 #[derive(Clone, Debug)]
 pub struct BenchPokemon {
     pub base: Rc<TeamMember>,
@@ -29,7 +33,7 @@ impl BenchPokemon {
 #[derive(Clone, Debug)]
 pub struct BattlePokemon {
     pub index: usize,
-    pub perm: Rc<RefCell<BenchPokemon>>,
+    pub perm: Benched,
     pub hooks: Hooks,
     pub overlay: TeamMember,
     pub types: OneOrTwo<Type>,
@@ -38,9 +42,7 @@ pub struct BattlePokemon {
 }
 
 impl BattlePokemon {
-    pub fn new(
-        index: usize, perm: &Rc<RefCell<BenchPokemon>>, hooks: &Hooks
-    ) -> Self {
+    pub fn new(index: usize, perm: &Benched, hooks: &Hooks) -> Self {
         Self {
             index,
             perm: perm.clone(),
@@ -118,8 +120,8 @@ impl BattlePokemon {
 
 #[derive(Clone, Debug)]
 pub struct DamageContext {
-    pub user: Rc<RefCell<BattlePokemon>>,
-    pub target: Rc<RefCell<BattlePokemon>>,
+    pub user: Current,
+    pub target: Current,
     pub slot: u8,
     pub mov: &'static moves::Move,
     pub typ: Type,
@@ -167,6 +169,7 @@ impl DamageContext {
 
     pub fn damage<R: rand::Rng>(&self, rng: &mut R) -> u16 {
         let max = self.calc_max_damage();
+        eprintln!("Debug: Max damage: {}", max);
         let dmg = ((max * rng.gen_range(85, 101)) / 100).max(1);
         self.target.borrow_mut().direct_damage(dmg);
         dmg

@@ -8,3 +8,6 @@ pub mod formats;
 pub mod hooks;
 pub mod caches;
 pub mod team;
+
+#[cfg(test)]
+mod tests;

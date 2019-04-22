@@ -241,7 +241,7 @@ impl DamageContext {
         }
     }
 
-    pub fn damage<R: rand::Rng>(&self, rng: &mut R) -> u16 {
+    pub fn do_damage<R: rand::Rng>(&self, rng: &mut R) -> u16 {
         let max = self.calc_max_damage();
         let dmg = ((max * rng.gen_range(85, 101)) / 100).max(1).min(max);
         if dmg > 0 {

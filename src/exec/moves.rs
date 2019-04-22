@@ -80,7 +80,7 @@ pub fn execute_move<F, R>(
                 };
                 let acc = context.accuracy();
                 if acc >= 1.0 || rng.gen_range(0.0, 1.0) < acc {
-                    let dmg = context.damage(rng);
+                    let dmg = context.do_damage(rng);
                     if dmg > 0 {
                         let meta = &mov.meta;
                         user.borrow_mut().direct_percentage(dmg, meta.recoil);

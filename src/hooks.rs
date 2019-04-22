@@ -1,12 +1,13 @@
 use crate::battle;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::collections::btree_map;
 use std::fmt;
+use std::ops::Try;
 use std::rc::Rc;
 use vdex::Ability;
 use vdex::moves::MoveId;
 use vdex::items::ItemId;
+use veekun::repr::NeverError;
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum HookSource {
@@ -41,72 +42,6 @@ impl HookKey {
     }
 }
 
-pub struct HookValues<'a, 'b, T: Clone> {
-    pub battle_map: BTreeMap<HookKey, T>,
-    pub battle_iter: Option<btree_map::Iter<'a, HookKey, T>>,
-    pub battle_next: Option<(&'a HookKey, &'a T)>,
-    pub overlay_iter: btree_map::Iter<'b, HookKey, T>,
-    pub overlay_next: Option<(&'b HookKey, &'b T)>,
-}
-
-impl<'a, 'b, T: Clone> HookValues<'a, 'b, T> {
-    pub fn new(map: &'b HookMap<T>) -> Self {
-        let bm = (*(map.battle.borrow())).clone();
-        let mut oi = map.overlay.iter();
-        Self {
-            battle_map: bm,
-            battle_iter: None,
-            battle_next: None,
-            overlay_iter: oi,
-            overlay_next: oi.next(),
-        }
-    }
-}
-
-impl<'a, 'b, T: Clone> Clone for HookValues<'a, 'b, T> {
-    fn clone(&self) -> Self {
-        Self {
-            battle_map: self.battle_map.clone(),
-            battle_iter: self.battle_iter.clone(),
-            battle_next: self.battle_next.clone(),
-            overlay_iter: self.overlay_iter.clone(),
-            overlay_next: self.overlay_next.clone(),
-        }
-    }
-}
-
-impl<'a, 'b, T: Clone> Iterator for HookValues<'a, 'b, T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<T> {
-        if let None = self.battle_iter {
-            self.battle_iter = Some(self.battle_map.iter());
-            self.battle_next = self.battle_iter.map_or(None, |i| i.next());
-        }
-        if let Some(bn) = self.battle_next {
-            if let Some(on) = self.overlay_next {
-                if bn.0 <= on.0 {
-                    self.battle_next = self.battle_iter.map_or(None, |i| i.next());
-                }
-                if on.0 <= bn.0 {
-                    self.overlay_next = self.overlay_iter.next();
-                }
-                Some(if bn.0 < on.0 { bn.1.clone() } else { on.1.clone() })
-            } else {
-                self.battle_next = self.battle_iter.map_or(None, |i| i.next());
-                Some(bn.1.clone())
-            }
-        } else if let Some(on) = self.overlay_next {
-            self.overlay_next = self.overlay_iter.next();
-            Some(on.1.clone())
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, 'b, T: Clone> std::iter::FusedIterator for HookValues<'a, 'b, T> { }
-
 #[derive(Clone)]
 pub struct HookMap<T: Clone> {
     pub battle: Rc<RefCell<BTreeMap<HookKey, T>>>,
@@ -128,8 +63,40 @@ impl<T: Clone> HookMap<T> {
         }
     }
 
-    pub fn values<'a, 'b>(&'b self) -> HookValues<'a, 'b, T> {
-        HookValues::new(self)
+    pub fn try_fold<A, F, R>(
+        &self, init: A, func: F
+    ) -> R where F: FnMut(A, T) -> R, R: Try<Ok=A> {
+        let mut acc = init;
+        let mut b_iter = self.battle.borrow().iter();
+        let mut b_next = b_iter.next();
+        let mut o_iter = self.overlay.iter();
+        let mut o_next = o_iter.next();
+        loop {
+            if let Some(b) = b_next {
+                if let Some(o) = o_next {
+                    if b.0 <= o.0 {
+                        b_next = b_iter.next();
+                    }
+                    if o.0 <= b.0 {
+                        o_next = o_iter.next();
+                    }
+                    acc = func(acc, if b.0 < o.0 { b.1 } else { o.1 })?;
+                } else {
+                    b_next = b_iter.next();
+                    acc = func(acc, b.1)?;
+                }
+            } else if let Some(o) = o_next {
+                o_next = o_iter.next();
+                acc = func(acc, o.1)?;
+            } else {
+                return acc;
+            }
+        }
+    }
+
+    pub fn fold<A, F>(&self, init: A, func: F) -> A where F: FnMut(A, T) -> A {
+        self.try_fold(init,
+            move |acc, x| Ok::<A, NeverError>(func(acc, x))).unwrap()
     }
 }
 

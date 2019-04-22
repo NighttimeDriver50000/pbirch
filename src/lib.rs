@@ -4,6 +4,7 @@ extern crate enum_repr;
 
 pub mod ailments;
 pub mod battle;
+pub mod exec;
 pub mod formats;
 pub mod hooks;
 pub mod caches;

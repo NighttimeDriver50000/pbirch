@@ -12,14 +12,14 @@ pub struct SingleBattler {
 }
 
 impl SingleBattler {
-    pub fn new(team: &Team, hooks: &Hooks) -> Self {
+    pub fn new(position: AbsoluteTarget, team: &Team, hooks: &Hooks) -> Self {
         let mut bench = Vec::new();
         for member in team {
             bench.push(Rc::new(RefCell::new(
                 battle::BenchPokemon::new(member))));
         }
         let current = Rc::new(RefCell::new(
-            battle::BattlePokemon::new(0, &bench[0], hooks)));
+            battle::BattlePokemon::new(position, 0, &bench[0], hooks)));
         Self { bench, current }
     }
 }
@@ -33,26 +33,40 @@ pub struct SingleBattle {
 impl SingleBattle {
     pub fn new(team1: &Team, team2: &Team) -> Self {
         let hooks = Hooks::new_battle();
-        let battler1 = SingleBattler::new(team1, &hooks);
-        let battler2 = SingleBattler::new(team2, &hooks);
+        let battler1 = SingleBattler::new(
+            AbsoluteTarget::Battler1_1, team1, &hooks);
+        let battler2 = SingleBattler::new(
+            AbsoluteTarget::Battler2_1, team2, &hooks);
         Self { hooks, battler1, battler2 }
     }
 }
 
 #[EnumRepr(type = "u8")]
 pub enum AbsoluteTarget {
-    Opponent1 = 0,
-    Opponent2,
-    Ally1,
-    Ally2,
+    Battler1_1 = 0,
+    Battler1_2,
+    Battler2_1,
+    Battler2_2,
+}
+
+impl AbsoluteTarget {
+    pub fn relative(self, user: &AbsoluteTarget) -> RelativeTarget {
+        RelativeTarget::from_repr(self.repr() ^ user.repr()).unwrap()
+    }
 }
 
 #[EnumRepr(type = "u8")]
 pub enum RelativeTarget {
-    Opponent1 = 0,
-    Opponent2,
-    User,
+    User = 0,
     Ally,
+    OpponentForward,
+    OpponentAcross,
+}
+
+impl RelativeTarget {
+    pub fn absolute(self, user: &AbsoluteTarget) -> AbsoluteTarget {
+        AbsoluteTarget::from_repr(self.repr() ^ user.repr()).unwrap()
+    }
 }
 
 pub struct LoneDoubleBattler {

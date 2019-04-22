@@ -1,17 +1,18 @@
 use crate::battle;
+use crate::formats::RelativeTarget;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::rc::Rc;
 use vdex::Ability;
-use vdex::moves::MoveId;
-use vdex::items::ItemId;
+use vdex::moves;
+use vdex::items;
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub enum HookSource {
     Engine(u16),
-    Move(MoveId),
-    Item(ItemId),
+    Move(moves::MoveId),
+    Item(items::ItemId),
     Ability(Ability),
 }
 
@@ -27,11 +28,11 @@ impl HookKey {
         Self { priority, source: HookSource::Engine(source), index }
     }
 
-    pub fn new_move(priority: i8, source: MoveId, index: u8) -> Self {
+    pub fn new_move(priority: i8, source: moves::MoveId, index: u8) -> Self {
         Self { priority, source: HookSource::Move(source), index }
     }
 
-    pub fn new_item(priority: i8, source: ItemId, index: u8) -> Self {
+    pub fn new_item(priority: i8, source: items::ItemId, index: u8) -> Self {
         Self { priority, source: HookSource::Item(source), index }
     }
 
@@ -109,8 +110,44 @@ impl Clone for DamageHook {
     }
 }
 
+#[derive(Copy)]
+pub struct TargetingHook(
+    pub fn(&battle::Current, moves::Target) -> RelativeTarget);
+
+impl Clone for TargetingHook {
+    fn clone(&self) -> Self {
+        TargetingHook(self.0)
+    }
+}
+
+#[derive(Clone)]
+pub struct TargetingPair(
+    pub Rc<RefCell<TargetingHook>>, pub Option<TargetingHook>);
+
+impl TargetingPair {
+    pub fn call(
+        &self, user: &battle::Current, mtgt: moves::Target
+    ) -> RelativeTarget {
+        if let Some(overlay) = self.1 {
+            overlay.0(user, mtgt)
+        } else {
+            self.0.borrow().0(user, mtgt)
+        }
+    }
+}
+
+impl fmt::Debug for TargetingPair {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "TargetingPair")
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Hooks {
+    pub targeting: TargetingPair,
+    pub user_accuracy_modifiers: HookMap<DamageHook>,
+    pub target_accuracy_modifiers: HookMap<DamageHook>,
+    pub critical_cancels: HookMap<bool>,
     pub power_modifiers: HookMap<DamageHook>,
     pub attack_modifiers: HookMap<DamageHook>,
     pub defense_modifiers: HookMap<DamageHook>,
@@ -121,6 +158,22 @@ pub struct Hooks {
 impl Hooks {
     pub fn new_battle() -> Self {
         Self {
+            targeting: TargetingPair(Rc::new(RefCell::new(TargetingHook(|_, mtgt| {
+                match mtgt {
+                    moves::Target::SpecificMove
+                        => panic!("Not implemented yet!"),
+                    moves::Target::SelectedPokemonReuseStolen
+                        | moves::Target::RandomOpponent
+                        | moves::Target::SelectedPokemon
+                        => RelativeTarget::OpponentForward,
+                    moves::Target::UserOrAlly
+                        => RelativeTarget::User,
+                    _ => panic!("Only call targeting if the target can vary!"),
+                }
+            }))), None),
+            user_accuracy_modifiers: HookMap::new_battle(),
+            target_accuracy_modifiers: HookMap::new_battle(),
+            critical_cancels: HookMap::new_battle(),
             power_modifiers: HookMap::new_battle(),
             attack_modifiers: HookMap::new_battle(),
             defense_modifiers: HookMap::new_battle(),
@@ -131,6 +184,13 @@ impl Hooks {
 
     pub fn new_overlay(battle: &Hooks) -> Self {
         Self {
+            targeting: TargetingPair(battle.targeting.0.clone(), None),
+            user_accuracy_modifiers:
+                HookMap::new_overlay(&battle.user_accuracy_modifiers.battle),
+            target_accuracy_modifiers:
+                HookMap::new_overlay(&battle.target_accuracy_modifiers.battle),
+            critical_cancels:
+                HookMap::new_overlay(&battle.critical_cancels.battle),
             power_modifiers:
                 HookMap::new_overlay(&battle.power_modifiers.battle),
             attack_modifiers:

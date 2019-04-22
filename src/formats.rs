@@ -6,6 +6,7 @@ use std::rc::Rc;
 use vdex::Enum;
 use enum_repr::EnumRepr;
 
+type Team = Vec<Rc<TeamMember>>;
 type Bench = Vec<Rc<RefCell<battle::BenchPokemon>>>;
 type Current = Rc<RefCell<battle::BattlePokemon>>;
 
@@ -15,7 +16,7 @@ pub struct SingleBattler {
 }
 
 impl SingleBattler {
-    pub fn new(team: &Vec<Rc<TeamMember>>, hooks: &Hooks) -> Self {
+    pub fn new(team: &Team, hooks: &Hooks) -> Self {
         let mut bench = Vec::new();
         for member in team {
             bench.push(Rc::new(RefCell::new(
@@ -31,6 +32,15 @@ pub struct SingleBattle {
     pub hooks: Hooks,
     pub battler1: SingleBattler,
     pub battler2: SingleBattler,
+}
+
+impl SingleBattle {
+    pub fn new(team1: &Team, team2: &Team) -> Self {
+        let hooks = Hooks::new_battle();
+        let battler1 = SingleBattler::new(team1, &hooks);
+        let battler2 = SingleBattler::new(team2, &hooks);
+        Self { hooks, battler1, battler2 }
+    }
 }
 
 #[EnumRepr(type = "u8")]

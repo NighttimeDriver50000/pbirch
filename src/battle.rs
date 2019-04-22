@@ -120,10 +120,12 @@ impl BattlePokemon {
 pub struct DamageContext {
     pub user: Rc<RefCell<BattlePokemon>>,
     pub target: Rc<RefCell<BattlePokemon>>,
+    pub slot: u8,
     pub mov: &'static moves::Move,
-    pub cls: moves::DamageClass,
     pub typ: Type,
+    pub power: u8,
     pub target_count: u8,
+    pub class: moves::DamageClass,
     pub critical: bool,
 }
 
@@ -134,16 +136,16 @@ impl DamageContext {
 
         let level_factor = ((2 * user.overlay.level) / 5) + 2;
         let power = user.hooks.power_modifiers.fold(
-            self.mov.power as f64, |pow, func| pow * func.0(self)).trunc();
+            self.power as f64, |pow, func| pow * func.0(self)).trunc();
 
-        let attack_stat = user.stat(match self.cls {
+        let attack_stat = user.stat(match self.class {
             moves::DamageClass::Special => Stat::SpecialAttack,
             _ => Stat::Attack,
         }, self.critical);
         let attack = user.hooks.attack_modifiers.fold(
             attack_stat as f64, |atk, func| atk * func.0(self)).trunc();
 
-        let defense_stat = target.stat(match self.cls {
+        let defense_stat = target.stat(match self.class {
             moves::DamageClass::Special => Stat::SpecialDefense,
             _ => Stat::Defense,
         }, self.critical);

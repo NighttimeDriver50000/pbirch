@@ -42,6 +42,8 @@ fn test_damage() {
         class: mov.damage_class,
         critical: false,
     };
+    let start_hp = target.borrow().perm.borrow().hp;
+    eprintln!("Target Start HP: {}", start_hp);
     let dmg = context.damage(&mut rand::thread_rng());
     let final_hp = target.borrow().perm.borrow().hp;
     eprintln!("Damage: {}; Target HP: {}", dmg, final_hp);

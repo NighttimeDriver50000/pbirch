@@ -1,5 +1,6 @@
 use crate::battle;
 use crate::hooks::Hooks;
+use crate::team::TeamMember;
 use std::cell::RefCell;
 use std::rc::Rc;
 use vdex::Enum;
@@ -11,6 +12,19 @@ type Current = Rc<RefCell<battle::BattlePokemon>>;
 pub struct SingleBattler {
     pub bench: Bench,
     pub current: Current,
+}
+
+impl SingleBattler {
+    pub fn new(team: &Vec<Rc<TeamMember>>, hooks: &Hooks) -> Self {
+        let mut bench = Vec::new();
+        for member in team {
+            bench.push(Rc::new(RefCell::new(
+                battle::BenchPokemon::new(member))));
+        }
+        let current = Rc::new(RefCell::new(
+            battle::BattlePokemon::new(0, &bench[0], hooks)));
+        Self { bench, current }
+    }
 }
 
 pub struct SingleBattle {

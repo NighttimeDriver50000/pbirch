@@ -16,15 +16,41 @@ pub struct BenchPokemon {
     pub hp: u16,
 }
 
+impl BenchPokemon {
+    pub fn new(base: &Rc<TeamMember>) -> Self {
+        Self {
+            base: base.clone(),
+            status: Default::default(),
+            hp: base.stat(Stat::HP),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct BattlePokemon {
     pub index: usize,
     pub perm: Rc<RefCell<BenchPokemon>>,
+    pub hooks: Hooks,
     pub overlay: TeamMember,
     pub types: OneOrTwo<Type>,
     pub status: ailments::BattlerAilments,
     pub stat_changes: [i8; moves::CHANGEABLE_STATS],
-    pub hooks: Hooks,
+}
+
+impl BattlePokemon {
+    pub fn new(
+        index: usize, perm: &Rc<RefCell<BenchPokemon>>, hooks: &Hooks
+    ) -> Self {
+        Self {
+            index,
+            perm: perm.clone(),
+            hooks: Hooks::new_overlay(hooks),
+            overlay: (*perm.borrow().base).clone(),
+            types: perm.borrow().base.pokemon.types,
+            status: Default::default(),
+            stat_changes: [0; moves::CHANGEABLE_STATS],
+        }
+    }
 }
 
 impl BattlePokemon {

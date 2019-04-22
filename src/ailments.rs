@@ -1,5 +1,6 @@
 #[derive(Copy, Clone, Debug)]
 pub enum BenchAilment {
+    None,
     Paralyzed,
     Asleep {
         remaining_turns: u8,
@@ -11,7 +12,12 @@ pub enum BenchAilment {
     },
 }
 
+impl Default for BenchAilment {
+    fn default() -> Self { BenchAilment::None }
+}
+
 bitflags! {
+    #[derive(Default)]
     pub struct BattlerAilmentFlags: u32 {
         // Does not include effects that never apply beyond the next turn.
         // Aligned to avoid offset typos.
@@ -52,7 +58,7 @@ bitflags! {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct BattlerAilments {
     pub flags: BattlerAilmentFlags,
     pub turns_badly_poisoned: u8,

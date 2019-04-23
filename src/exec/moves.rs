@@ -1,7 +1,7 @@
 use crate::battle::{Current, DamageContext};
 use crate::formats::{AbsoluteTarget, RelativeTarget};
-use vdex::moves::{self, Move, Effect};
-use vdex::Stat;
+use crate::hooks;
+use vdex::moves::{self, Effect, Move};
 
 pub fn get_targets(user: &Current, mov: &'static Move) -> Vec<RelativeTarget> {
     match mov.target {
@@ -49,55 +49,184 @@ pub fn execute_move<F, R>(
             return false;
         }
     }
-    let gen_critical = |rng: &mut R| {
-        let r = rng.gen_range(0, 48);
-        match (user.borrow().critical_rate + mov.meta.critical_rate).max(0) {
-            0 => r < 3,
-            1 => r < 6,
-            2 => r < 12,
-            3 => r < 16,
-            _ => r < 24,
-        }
-    };
-    let percent_event = |rng: &mut R, percent: u8| {
-        percent > 0 && rng.gen_range(0, 100) < percent
+    let create_context = |target: &Current, rng: &mut R| -> DamageContext {
+        DamageContext::new_basic(user, target, slot, mov, target_count, rng)
     };
     match mov.effect {
-        Effect::RegularDamage => {
-            // Moves that hit once and do damage, potentially applying an
-            // ailment, flinching, or stat changes to the target.
+        Effect::RegularDamage
+            | Effect::SleepTarget
+            | Effect::ChancePoisonTarget
+            | Effect::HealUserHalfInflicted
+            | Effect::ChanceBurnTarget
+            | Effect::ChanceFreezeTarget
+            | Effect::ChanceParalyzeTarget
+            | Effect::NeverMisses
+            | Effect::LowerTargetAttack
+            | Effect::LowerTargetDefense
+            | Effect::LowerTargetSpeed
+            | Effect::LowerTargetAccuracy
+            | Effect::LowerTargetEvasion
+            | Effect::ChanceFlinchTarget
+            | Effect::HealUserByHalfMaxHP
+            | Effect::PayDay
+            | Effect::IncreasedCritical
+            | Effect::QuarterRecoil
+            | Effect::ConfuseTarget
+            | Effect::LowerTargetAttack2
+            | Effect::LowerTargetDefense2
+            | Effect::LowerTargetSpeed2
+            | Effect::LowerTargetSpecialDefense2
+            | Effect::PoisonTarget
+            | Effect::ParalyzeTarget
+            | Effect::ChanceLowerTargetAttack
+            | Effect::ChanceLowerTargetDefense
+            | Effect::ChanceLowerTargetSpeed
+            | Effect::ChanceLowerTargetSpecialAttack
+            | Effect::ChanceLowerTargetSpecialDefense
+            | Effect::ChanceLowerTargetAccuracy
+            | Effect::ChanceConfuseTarget
+        => {
             for target in targets {
-                let context = DamageContext {
-                    user: user.clone(),
-                    target: target.clone(),
-                    slot,
-                    mov,
-                    typ: mov.typ,
-                    power: mov.power,
-                    target_count,
-                    class: mov.damage_class,
-                    critical: gen_critical(rng),
-                };
-                let acc = context.accuracy();
+                create_context(&target, rng).execute_basic_move(rng);
+            }
+        },
+        Effect::FaintUser => {
+            // TODO: faint user
+            for target in targets {
+                let key = hooks::HookKey::new_move(0, mov.id, 0);
+                target.borrow_mut().hooks.defense_modifiers.overlay
+                    .insert(key, hooks::DamageHook(|_| 0.5));
+                create_context(&target, rng).execute_basic_move(rng);
+                target.borrow_mut().hooks.defense_modifiers.overlay
+                    .remove(&key);
+            }
+        },
+        Effect::DreamEater => {
+            if target_count != 1 || !targets[0].borrow().is_asleep() {
+                return false;
+            }
+            create_context(&targets[0], rng).execute_basic_move(rng);
+        },
+        Effect::MirrorMove => {
+            // TODO: implement
+        },
+        Effect::RaiseUserAttack
+            | Effect::RaiseUserDefense
+            | Effect::RaiseUserSpecialAttack
+            | Effect::RaiseUserEvasion
+            | Effect::RaiseUserAttack2
+            | Effect::RaiseUserDefense2
+            | Effect::RaiseUserSpeed2
+            | Effect::RaiseUserSpecialAttack2
+            | Effect::RaiseUserSpecialDefense2
+        => {
+            // TODO: implement
+        },
+        Effect::Haze => {
+            for target in targets {
+                target.borrow_mut().stat_changes = [0; moves::CHANGEABLE_STATS];
+            }
+        },
+        Effect::Bide => {
+            // TODO: implement
+        },
+        Effect::Hit2To3TurnsThenConfuseUser => {
+            // TODO: implement
+        },
+        Effect::SwitchOutTarget => {
+            // TODO: implement
+        },
+        Effect::Hit2To5Times => {
+            for target in targets {
+                let acc = create_context(&target, rng).accuracy();
                 if acc >= 1.0 || rng.gen_range(0.0, 1.0) < acc {
-                    let dmg = context.do_damage(rng);
-                    if dmg > 0 {
-                        let meta = &mov.meta;
-                        user.borrow_mut().direct_percentage(dmg, meta.recoil);
-                        let max_hp = user.borrow().overlay.stat(Stat::HP);
-                        user.borrow_mut().direct_percentage(max_hp, meta.healing);
-                        if percent_event(rng, meta.ailment_chance) {
-                            // TODO: apply ailments
-                        }
-                        if percent_event(rng, meta.flinch_chance) {
-                            // TODO: flinching
-                        }
-                        if percent_event(rng, meta.stat_chance) {
-                            user.borrow_mut().change_stats(meta.stat_changes);
-                        }
+                    let hits = match rng.gen_range(0, 6) {
+                        0 | 1 => 2,
+                        2 | 3 => 3,
+                        4 => 4,
+                        5 => 5,
+                        _ => unreachable!(),
+                    };
+                    for _ in 0..hits {
+                        create_context(&target, rng).execute_basic_core(rng);
                     }
                 }
             }
+        },
+        Effect::Conversion => {
+            // TODO: implement
+        },
+        Effect::Toxic => {
+            // TODO: implement
+        },
+        Effect::LightScreen => {
+            // TODO: implement
+        },
+        Effect::TriAttack => {
+            // TODO: implement
+        },
+        Effect::Rest => {
+            // TODO: implement
+        },
+        Effect::OneHitKO => {
+            // TODO: implement
+        },
+        Effect::RazorWind => {
+            // TODO: implement
+        },
+        Effect::SuperFang => {
+            if target_count != 1
+                || !targets[0].borrow().types.contains(vdex::Type::Ghost) {
+                return false;
+            }
+            let hp = targets[0].borrow().perm.borrow().hp;
+            targets[0].borrow_mut().direct_percentage(hp, -50);
+        },
+        Effect::DragonRage => {
+            for target in targets {
+                target.borrow_mut().direct_damage(40);
+            }
+        },
+        Effect::SixteenthHP2To5Turns => {
+            // TODO: implement
+        },
+        Effect::HitTwice => {
+            for target in targets {
+                let acc = create_context(&target, rng).accuracy();
+                if acc >= 1.0 || rng.gen_range(0.0, 1.0) < acc {
+                    for _ in 0..2 {
+                        create_context(&target, rng).execute_basic_core(rng);
+                    }
+                }
+            }
+        },
+        Effect::HalfRecoilIfMiss => {
+            for target in targets {
+                let ctx = create_context(&target, rng);
+                let acc = ctx.accuracy();
+                if acc >= 1.0 || rng.gen_range(0.0, 1.0) < acc {
+                    ctx.execute_basic_core(rng);
+                } else {
+                    let max = ctx.calc_max_damage();
+                    let dmg = ((max * rng.gen_range(85, 101)) / 100).max(1).min(max);
+                    user.borrow_mut().direct_percentage(dmg, -50);
+                }
+            }
+        },
+        Effect::Mist => {
+            // TODO: implement
+        },
+        Effect::FocusEnergy => {
+            // TODO: implement
+        },
+        Effect::Transform => {
+            // TODO: implement
+        },
+        Effect::Reflect => {
+            // TODO: implement
+        },
+        Effect::SkyAttack => {
+            // TODO: implement
         },
         _ => panic!("TODO: Not implemented yet!"),
     }

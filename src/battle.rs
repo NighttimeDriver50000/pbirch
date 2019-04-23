@@ -150,6 +150,46 @@ impl BattlePokemon {
             },
         }
     }
+
+    pub fn is_paralyzed(&self) -> bool {
+        if let ailments::BenchAilment::Paralyzed = self.perm.borrow().status {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_asleep(&self) -> bool {
+        if let ailments::BenchAilment::Asleep { .. } = self.perm.borrow().status {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_frozen(&self) -> bool {
+        if let ailments::BenchAilment::Frozen = self.perm.borrow().status {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_burned(&self) -> bool {
+        if let ailments::BenchAilment::Burned = self.perm.borrow().status {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_poisoned(&self) -> bool {
+        if let ailments::BenchAilment::Poisoned { .. } = self.perm.borrow().status {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -166,6 +206,40 @@ pub struct DamageContext {
 }
 
 impl DamageContext {
+    pub fn gen_critical<R: rand::Rng>(
+        user: &Current, mov: &'static moves::Move, rng: &mut R
+    ) -> bool {
+        let r = rng.gen_range(0, 48);
+        match (user.borrow().critical_rate + mov.meta.critical_rate).max(0) {
+            0 => r < 3,
+            1 => r < 6,
+            2 => r < 12,
+            3 => r < 16,
+            _ => r < 24,
+        }
+    }
+
+    pub fn gen_event<R: rand::Rng>(percent_chance: u8, rng: &mut R) -> bool {
+        percent_chance > 0 && rng.gen_range(0, 100) < percent_chance
+    }
+
+    pub fn new_basic<R: rand::Rng>(
+        user: &Current, target: &Current, slot: u8, mov: &'static moves::Move,
+        target_count: u8, rng: &mut R
+    ) -> DamageContext {
+        DamageContext {
+            user: user.clone(),
+            target: target.clone(),
+            slot,
+            mov,
+            typ: mov.typ,
+            power: mov.power,
+            target_count,
+            class: mov.damage_class,
+            critical: DamageContext::gen_critical(user, mov, rng),
+        }
+    }
+
     pub fn accuracy(&self) -> f64 {
         let user = self.user.borrow();
         let target = self.target.borrow();
@@ -246,6 +320,41 @@ impl DamageContext {
         let dmg = ((max * rng.gen_range(85, 101)) / 100).max(1).min(max);
         if dmg > 0 {
             self.target.borrow_mut().direct_damage(dmg)
+        } else {
+            0
+        }
+    }
+
+    pub fn execute_basic_core<R: rand::Rng>(&self, rng: &mut R) -> u16 {
+        let dmg = if self.mov.power > 0 {
+            self.do_damage(rng)
+        } else {
+            0
+        };
+        if self.mov.power == 0 || dmg > 0 {
+            let meta = &self.mov.meta;
+            self.user.borrow_mut().direct_percentage(dmg, meta.recoil);
+            let max_hp = self.user.borrow().overlay.stat(Stat::HP);
+            self.user.borrow_mut().direct_percentage(max_hp, meta.healing);
+            if DamageContext::gen_event(meta.ailment_chance, rng) {
+                // TODO: apply ailments
+            }
+            if DamageContext::gen_event(meta.flinch_chance, rng) {
+                // TODO: flinching
+            }
+            if DamageContext::gen_event(meta.stat_chance, rng) {
+                self.user.borrow_mut().change_stats(meta.stat_changes);
+            }
+        }
+        dmg
+    }
+
+    pub fn execute_basic_move<R: rand::Rng>(&self, rng: &mut R) -> u16 {
+        // Moves that hit once, and applying recoil or healing to the user, and
+        // an ailment, flinching, or stat changes to the target.
+        let acc = self.accuracy();
+        if acc >= 1.0 || rng.gen_range(0.0, 1.0) < acc {
+            self.execute_basic_core(rng)
         } else {
             0
         }

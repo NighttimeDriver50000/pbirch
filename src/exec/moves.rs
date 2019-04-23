@@ -85,6 +85,8 @@ pub fn execute_move<F, R>(
             | Effect::ChanceLowerTargetSpecialDefense
             | Effect::ChanceLowerTargetAccuracy
             | Effect::ChanceConfuseTarget
+            | Effect::VitalThrow
+            | Effect::Fast
         => {
             for target in targets {
                 create_context(&target, rng).execute_basic_move(rng);
@@ -175,16 +177,18 @@ pub fn execute_move<F, R>(
             // TODO: implement
         },
         Effect::SuperFang => {
-            if target_count != 1
-                || !targets[0].borrow().types.contains(vdex::Type::Ghost) {
-                return false;
+            for target in targets {
+                if target.borrow().efficacy(mov.typ) > 0.0 {
+                    let hp = target.borrow().perm.borrow().hp;
+                    target.borrow_mut().direct_percentage(hp, -50);
+                }
             }
-            let hp = targets[0].borrow().perm.borrow().hp;
-            targets[0].borrow_mut().direct_percentage(hp, -50);
         },
         Effect::DragonRage => {
             for target in targets {
-                target.borrow_mut().direct_damage(40);
+                if target.borrow().efficacy(mov.typ) > 0.0 {
+                    target.borrow_mut().direct_damage(40);
+                }
             }
         },
         Effect::SixteenthHP2To5Turns => {
@@ -226,6 +230,120 @@ pub fn execute_move<F, R>(
             // TODO: implement
         },
         Effect::SkyAttack => {
+            // TODO: implement
+        },
+        Effect::Twineedle => {
+            // TODO: implement
+        },
+        Effect::Substitute => {
+            // TODO: implement
+        },
+        Effect::RechargeNextTurn => {
+            // TODO: implement
+        },
+        Effect::Rage => {
+            // TODO: implement
+        },
+        Effect::Mimic => {
+            // TODO: implement
+        },
+        Effect::Metronome => {
+            // TODO: implement
+        },
+        Effect::LeechSeed => {
+            // TODO: implement
+        },
+        Effect::Splash => (),
+        Effect::Disable => {
+            // TODO: implement
+        },
+        Effect::UserLevelDamage => {
+            for target in targets {
+                if target.borrow().efficacy(mov.typ) > 0.0 {
+                    let level = user.borrow().overlay.level as u16;
+                    target.borrow_mut().direct_damage(level);
+                }
+            }
+        },
+        Effect::Psywave => {
+            for target in targets {
+                if target.borrow().efficacy(mov.typ) > 0.0 {
+                    let level = user.borrow().overlay.level as u16;
+                    let dmg = (level * rng.gen_range(50, 151)) / 100;
+                    target.borrow_mut().direct_damage(dmg);
+                }
+            }
+        },
+        Effect::Counter => {
+            // TODO: implement
+        },
+        Effect::Encore => {
+            // TODO: implement
+        },
+        Effect::PainSplit => {
+            for target in targets {
+                let user_hp = user.borrow().perm.borrow().hp;
+                let target_hp = target.borrow().perm.borrow().hp;
+                let mean = (user_hp + target_hp) / 2;
+                user.borrow().perm.borrow_mut().hp = mean;
+                target.borrow().perm.borrow_mut().hp = mean;
+            }
+        },
+        Effect::Snore => {
+            if !user.borrow().is_asleep() {
+                return false;
+            }
+            for target in targets {
+                create_context(&target, rng).execute_basic_move(rng);
+            }
+        },
+        Effect::Conversion2 => {
+            // TODO: implement
+        },
+        Effect::GuaranteeNextMoveHit => {
+            // TODO: implement
+        },
+        Effect::Sketch => {
+            // TODO: implement
+        },
+        Effect::SleepTalk => {
+            // TODO: implement
+        },
+        Effect::DestinyBond => {
+            // TODO: implement
+        },
+        Effect::MoreDamageWhenLessUserHP => {
+            for target in targets {
+                let user_hp = user.borrow().perm.borrow().hp as f64;
+                let max_hp = user.borrow().overlay.stat(vdex::Stat::HP) as f64;
+                let r = user_hp / max_hp;
+                let mut ctx = create_context(&target, rng);
+                ctx.power = if r < 0.0417 {
+                    200
+                } else if r < 0.1042 {
+                    150
+                } else if r < 0.2083 {
+                    100
+                } else if r < 0.3542 {
+                    80
+                } else if r < 0.6875 {
+                    40
+                } else {
+                    20
+                };
+                ctx.execute_basic_move(rng);
+            }
+        },
+        Effect::Spite => {
+            // TODO: implement
+        },
+        Effect::FalseSwipe => {
+            // TODO: implement
+        },
+        Effect::CurePartyStatus => {
+            // TODO: implement
+        },
+        Effect::TripleKick => {
             // TODO: implement
         },
         _ => panic!("TODO: Not implemented yet!"),

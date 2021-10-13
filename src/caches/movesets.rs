@@ -1,13 +1,13 @@
 use super::pokemon::pokemon_ref;
 use std::collections::{HashMap, HashSet};
-use std::sync::{Once, ONCE_INIT, RwLock};
+use std::sync::{Once, RwLock};
 use vdex::moves::MoveId;
 use vdex::pokemon::PokemonId;
 
 type Cache = HashMap<PokemonId, HashSet<MoveId>>;
 
 static mut CACHE: Option<RwLock<Cache>> = None;
-static CACHE_ONCE: Once = ONCE_INIT;
+static CACHE_ONCE: Once = Once::new();
 
 fn lock_ref() -> &'static mut RwLock<Cache> {
     unsafe {

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Once, ONCE_INIT};
+use std::sync::Once;
 use vdex::pokemon;
 
 pub struct PokemonRefs {
@@ -10,7 +10,7 @@ pub struct PokemonRefs {
 pub type PokemonRefMap = HashMap<pokemon::PokemonId, PokemonRefs>;
 
 static mut CACHE: Option<PokemonRefMap> = None;
-static CACHE_ONCE: Once = ONCE_INIT;
+static CACHE_ONCE: Once = Once::new();
 
 pub fn pokemon_ref_map() -> &'static PokemonRefMap {
     unsafe {
